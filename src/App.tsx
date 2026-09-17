@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type Answers = Record<string, string>
 const STORAGE = 'famu-action-research-lite-v1'
@@ -15,16 +15,16 @@ export default function App(){
   const saved=(()=>{try{return JSON.parse(localStorage.getItem(STORAGE)||'{}')}catch{return {}}})()
   const [step,setStep]=useState<number>(saved.step||0),[answers,setAnswers]=useState<Answers>(saved.answers||{}),[showCoach,setShowCoach]=useState(false)
   useEffect(()=>localStorage.setItem(STORAGE,JSON.stringify({step,answers})),[step,answers])
-  useEffect(()=>{setShowCoach(false);window.scrollTo({top:0,behavior:'smooth'})},[step])
+  const goTo=(next:number)=>{setShowCoach(false);setStep(next);window.scrollTo({top:0,behavior:'smooth'})}
   const progress=Math.round(step/(steps.length-1)*100),choose=(v:string)=>setAnswers(a=>({...a,[`step${step}`]:v})),canContinue=step===0||step>=5||Boolean(answers[`step${step}`])
-  const content=useMemo(()=>{
-    if(step===0)return <Welcome onStart={()=>setStep(1)}/>
+  const content=(()=>{
+    if(step===0)return <Welcome onStart={()=>goTo(1)}/>
     if(step<=4){const p=prompts[step as keyof typeof prompts];return <Decision {...p} selected={answers[`step${step}`]} onChoose={choose} showCoach={showCoach} onCoach={()=>setShowCoach(true)}/>}
     if(step===5)return <Analyze selected={answers.interpretation||''} onChoose={v=>setAnswers(a=>({...a,interpretation:v}))}/>
     if(step===6)return <Writing title="What can—and can’t—you conclude?" eyebrow="Reflect" prompt="Write 2–4 sentences. What changed, what remains uncertain, and what is one plausible alternative explanation?" value={answers.reflection||''} onChange={(v:string)=>setAnswers(a=>({...a,reflection:v}))} tip="Avoid saying the action ‘proved’ a cause. Four weeks of synthetic classroom data can suggest a useful pattern, not establish certainty."/>
     if(step===7)return <Writing title="Plan the next spiral" eyebrow="Act again" prompt="What would you keep, adjust, and examine during a second cycle?" value={answers.cycleTwo||''} onChange={(v:string)=>setAnswers(a=>({...a,cycleTwo:v}))} tip="Action research is a spiral: plan → act → observe → reflect → plan again."/>
     return <Report answers={answers} ready={Boolean(answers.reflection&&answers.cycleTwo)}/>
-  },[step,answers,showCoach])
+  })()
   return <div className="shell"><header className="topbar"><a className="brand" href="#" onClick={e=>{e.preventDefault();setStep(0)}}><span className="mark">AR</span><span>FAMU COE <b>Action Research Lite</b></span></a><div className="simulation">Undergraduate learning simulation</div><button className="text-button" onClick={()=>{if(confirm('Clear this simulation and start again?')){localStorage.removeItem(STORAGE);setAnswers({});setStep(0)}}}>Start over</button></header><div className="layout"><aside className="sidebar" aria-label="Learning cycle"><div className="progress-label"><span>YOUR PROGRESS</span><b>{progress}%</b></div><div className="progress-track"><i style={{width:`${progress}%`}}/></div><nav>{steps.map((s,i)=><button key={s[0]} className={i===step?'active':i<step?'done':''} onClick={()=>i<=step&&setStep(i)} disabled={i>step}><span>{i<step?'✓':i+1}</span><em>{s[0]}<small>{s[1]}</small></em></button>)}</nav><div className="guardrail"><b>Practice space</b><p>Fictional case. Synthetic data. No real student information.</p></div></aside><main className="main"><div className="content">{content}</div>{step>0&&step<8&&<footer className="controls"><button className="back" onClick={()=>setStep(s=>s-1)}>← Back</button><button className="next" disabled={!canContinue} onClick={()=>setStep(s=>s+1)}>Continue <span>→</span></button></footer>}</main></div></div>
 }
 
